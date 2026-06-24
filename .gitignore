@@ -1,3 +1,14 @@
-data/
+﻿data/
 *.log
+backup-*/
+backup2-*/
+test-*.js
+fix-encoding.js
+test-db.js
+test-match.js
+test-sql.js
+test-ws.js
+项目策划书.md
 .DS_Store
+
+node_modules/
