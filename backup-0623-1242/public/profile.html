@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoomArena - 个人主页</title>
+  <link rel="stylesheet" href="/css/common.css">
+  <style>
+    .profile-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #0f3460; margin-bottom: 20px; }
+    .profile-card { background: #16213e; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; }
+    .profile-card .avatar { font-size: 60px; margin-bottom: 10px; }
+    .profile-card .name { font-size: 24px; font-weight: bold; }
+    .profile-card .username { color: #888; font-size: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+    .stat-card { background: #0f3460; border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-card .value { font-size: 24px; font-weight: bold; color: #4fc3f7; }
+    .stat-card .label { font-size: 12px; color: #888; margin-top: 4px; }
+    .history { background: #16213e; border-radius: 12px; padding: 20px; }
+    .history h2 { font-size: 16px; margin-bottom: 12px; }
+    .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #0f3460; font-size: 14px; }
+    .history-item .win { color: #66bb6a; }
+    .history-item .lose { color: #ef5350; }
+    .back-link { display: inline-block; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="profile-container">
+    <header>
+      <h1>💣 BoomArena</h1>
+      <a href="/">← 返回大厅</a>
+    </header>
+
+    <div class="profile-card">
+      <div class="avatar">👤</div>
+      <div class="name" id="nickname">-</div>
+      <div class="username" id="username">@-</div>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="value" id="rating">-</div>
+          <div class="label">积分</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="wins">-</div>
+          <div class="label">胜场</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="winRate">-</div>
+          <div class="label">胜率</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="history">
+      <h2>对局历史</h2>
+      <div id="historyList">
+        <div style="text-align:center;color:#666;padding:12px;">暂无对局记录</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+    async function loadProfile() {
+      try {
+        const data = await API.get('/api/user/profile');
+        document.getElementById('nickname').textContent = data.nickname;
+        document.getElementById('username').textContent = '@' + data.username;
+        document.getElementById('rating').textContent = data.rating;
+        document.getElementById('wins').textContent = data.wins;
+        document.getElementById('winRate').textContent = data.win_rate + '%';
+
+        // Load match history
+        const matches = await API.get('/api/user/matches');
+        const list = document.getElementById('historyList');
+        if (matches.length === 0) {
+          list.innerHTML = '<div style="text-align:center;color:#666;padding:12px;">暂无对局记录</div>';
+        } else {
+          list.innerHTML = matches.map(m => `
+            <div class="history-item">
+              <span>${m.game_type === 'bomberman' ? '炸弹人' : '未知'} | ${m.opponent || 'AI'}</span>
+              <span class="${m.is_winner ? 'win' : 'lose'}">${m.is_winner ? '胜利' : '失败'}</span>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

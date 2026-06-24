@@ -1,0 +1,10 @@
+.auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+.auth-box {
+  background: #16213e; padding: 40px; border-radius: 12px;
+  width: 100%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.auth-box h1 { text-align: center; font-size: 36px; margin-bottom: 2px; }
+.auth-box .subtitle { text-align: center; font-size: 14px; color: #888; margin-bottom: 24px; }
+.auth-box form { display: flex; flex-direction: column; gap: 12px; }
+.auth-box p { text-align: center; margin-top: 12px; font-size: 14px; }
+.error { color: #ef5350; min-height: 24px; text-align: center; font-size: 14px; }

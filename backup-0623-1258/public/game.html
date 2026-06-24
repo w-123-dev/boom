@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoomArena - Game</title>
+  <link rel="stylesheet" href="/css/common.css">
+  <style>
+    body { margin: 0; overflow: hidden; background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .game-wrapper { position: relative; }
+    #gameCanvas { display: block; border: 2px solid #0f3460; border-radius: 4px; image-rendering: pixelated; background: #2d2d2d; }
+    .hud { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; pointer-events: none; flex-wrap: wrap; gap: 4px; }
+    .hud-player { background: rgba(0,0,0,0.7); border-radius: 6px; padding: 4px 8px; font-size: 11px; }
+    .hud-player .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .overlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.75); display: flex; flex-direction: column;
+      justify-content: center; align-items: center; z-index: 10; padding: 20px;
+    }
+    .overlay h2 { font-size: 24px; margin-bottom: 12px; }
+    .controls-hint {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.6); color: #888; font-size: 12px; padding: 4px 12px; border-radius: 4px;
+      pointer-events: none;
+    }
+    .btn { margin: 4px; min-width: 140px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="game-wrapper" id="gameWrapper">
+    <canvas id="gameCanvas"></canvas>
+    <div class="hud" id="hud"></div>
+    <div class="controls-hint">Arrow keys to move | Space to bomb</div>
+    <div id="gameOverOverlay" class="overlay hidden">
+      <h2 id="gameResult"></h2>
+      <div id="gameWinner" style="margin-bottom:12px;text-align:center;"></div>
+      <div>
+        <button id="backBtn" class="btn">Spectate</button>
+        <button id="leaveBtn" class="btn danger hidden">Leave Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/socket.io.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/renderer/index.js"></script>
+  <script src="/js/game-client.js"></script>
+</body>
+</html>

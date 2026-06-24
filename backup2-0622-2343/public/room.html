@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoomArena - Room</title>
+  <link rel="stylesheet" href="/css/common.css">
+  <style>
+    .room-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #0f3460; margin-bottom: 20px; }
+    .code-section { background: #16213e; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
+    .code-label { color: #888; font-size: 13px; }
+    .code-value { font-size: 28px; letter-spacing: 6px; color: #4fc3f7; font-weight: bold; margin-top: 4px; }
+    .player-card { background: #0f3460; border-radius: 8px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .player-card .status { font-size: 13px; padding: 4px 12px; border-radius: 12px; }
+    .player-card .status.ready { background: #66bb6a; color: #fff; }
+    .player-card .status.not-ready { background: #555; color: #ccc; }
+    .host-badge { background: #ffd54f; color: #1a1a2e; font-size: 11px; padding: 2px 8px; border-radius: 8px; font-weight: bold; margin-left: 8px; }
+    .actions { display: flex; gap: 8px; justify-content: center; margin: 16px 0; }
+    .actions button { flex: 1; max-width: 200px; }
+    .back-link { color: #ef5350; font-size: 14px; cursor: pointer; text-decoration: none; }
+    .hidden { display: none !important; }
+    .result-title { text-align: center; margin-bottom: 12px; font-size: 18px; color: #4fc3f7; }
+  </style>
+</head>
+<body>
+  <div class="room-container">
+    <header>
+      <h1>BoomArena</h1>
+      <a href="/" class="back-link" id="leaveLink">Leave Room</a>
+    </header>
+    <div class="code-section">
+      <div class="code-label">Room Code</div>
+      <div class="code-value" id="roomCodeDisplay">----</div>
+    </div>
+    <h2 style="font-size:16px;margin-bottom:12px;">Players</h2>
+    <div id="playerList"></div>
+    <div class="actions">
+      <button id="readyBtn" class="success hidden">Ready</button>
+      <button id="startBtn" class="hidden">Start Game</button>
+    </div>
+  </div>
+
+  <script src="/assets/socket.io.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    if (!code) { window.location.href = '/'; }
+    document.getElementById('roomCodeDisplay').textContent = code;
+
+    var user = JSON.parse(localStorage.getItem('user') || '{}');
+    var socket = io({ auth: { token: localStorage.getItem('token') }, transports: ['websocket', 'polling'] });
+
+    socket.on('connect', function() {
+      socket.emit('refresh_room', { code: code });
+    });
+
+    socket.on('room_update', function(data) {
+      renderRoom(data);
+    });
+
+    socket.on('game_results', function(data) {
+      renderResults(data);
+    });
+
+    socket.on('join_result', function(data) {
+      if (!data.success) { alert(data.error); window.location.href = '/'; }
+    });
+
+    socket.on('error_msg', function(m) { alert(m); });
+
+    function renderRoom(data) {
+      var list = document.getElementById('playerList');
+      var html = '';
+      for (var i = 0; i < data.players.length; i++) {
+        var p = data.players[i];
+        html += '<div class="player-card"><div>';
+        html += '<span style="color:' + ['#e53935','#43a047','#1e88e5','#fb8c00'][i % 4] + '">' + p.nickname + '</span>';
+        if (p.userId === data.hostId) html += '<span class="host-badge">Host</span>';
+        html += '</div><span class="status ' + (p.ready ? 'ready' : 'not-ready') + '">' + (p.ready ? 'Ready' : 'Waiting') + '</span></div>';
+      }
+      if (data.players.length === 0) {
+        html = '<div style="text-align:center;color:#666;padding:12px;">Empty room</div>';
+      }
+      list.innerHTML = html;
+
+      var readyBtn = document.getElementById('readyBtn');
+      var startBtn = document.getElementById('startBtn');
+      if (data.hostId === user.id) {
+        startBtn.classList.remove('hidden');
+        readyBtn.classList.add('hidden');
+        var n = 0;
+        for (var i = 0; i < data.players.length; i++) {
+          if (data.players[i].ready || data.players[i].userId === data.hostId) n++;
+        }
+        startBtn.textContent = (n === data.players.length) ? 'Start Game' : 'Waiting (' + n + '/' + data.players.length + ')';
+        startBtn.onclick = function() { socket.emit('start_game'); };
+      } else {
+        readyBtn.classList.remove('hidden');
+        startBtn.classList.add('hidden');
+        var me = null;
+        for (var i = 0; i < data.players.length; i++) {
+          if (data.players[i].userId === user.id) { me = data.players[i]; break; }
+        }
+        readyBtn.textContent = (me && me.ready) ? 'Unready' : 'Ready';
+        readyBtn.onclick = function() { socket.emit('room_ready'); };
+      }
+    }
+
+    function renderResults(data) {
+      var list = document.getElementById('playerList');
+      var rankings = data.rankings || [];
+      var scoreTable = [0, 20, 10, -5, -10];
+      var html = '<div class="result-title">Game Results</div>';
+      for (var i = 0; i < rankings.length; i++) {
+        var r = rankings[i];
+        var medal = ['1st', '2nd', '3rd', '4th'][r.rank - 1] || (r.rank + 'th');
+        var score = scoreTable[r.rank] || -10;
+        html += '<div class="player-card"><div>';
+        html += medal + '. ' + r.nickname;
+        html += '</div><span style="color:' + (score >= 0 ? '#66bb6a' : '#ef5350') + '">' + (score >= 0 ? '+' : '') + score + '</span></div>';
+      }
+      list.innerHTML = html;
+      var readyBtn = document.getElementById('readyBtn');
+      var startBtn = document.getElementById('startBtn');
+      readyBtn.classList.add('hidden');
+      startBtn.classList.remove('hidden');
+      startBtn.textContent = 'Play Again';
+      startBtn.onclick = function() { socket.emit('start_game'); };
+    }
+
+    document.getElementById('leaveLink').onclick = function(e) {
+      e.preventDefault();
+      socket.emit('leave_room');
+      setTimeout(function() { window.location.href = '/'; }, 200);
+    };
+
+    socket.on('game_start', function(data) {
+      window.location.href = '/game.html?code=' + code;
+    });
+  </script>
+</body>
+</html>
