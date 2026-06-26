@@ -1,4 +1,4 @@
-// 道具
+﻿// 道具
 const POWERUP_TYPES = {
   BOMB_UP: { id: 'bomb_up', label: '💣+', desc: '炸弹数+1', weight: 25 },
   FIRE_UP: { id: 'fire_up', label: '🔥+', desc: '爆炸范围+1', weight: 25 },
@@ -27,14 +27,14 @@ class PowerUp {
     this.type = type;
   }
 
-  apply(player) {
+  apply(player, tickCount) {
     switch (this.type.id) {
-      case 'bomb_up': player.maxBombs = Math.min(player.maxBombs + 1, 8); break;
-      case 'fire_up': player.bombRange = Math.min(player.bombRange + 1, 8); break;
-      case 'speed_up': player.speed = Math.min(player.speed + 1, 3); break;
-      case 'shield': player.shielded = true; break;
-      case 'skull': player.speed = Math.max(player.speed - 1, 1); break;
-      // kick 需要额外逻辑
+      case 'bomb_up': player.maxBombs = Math.min(player.maxBombs + 1, 8); player.bombUpUntil = (tickCount || 0) + 300; break;
+      case 'fire_up': player.bombRange = Math.min(player.bombRange + 1, 8); player.fireUpUntil = (tickCount || 0) + 300; break;
+      case 'speed_up': player.speed = Math.min(player.speed + 1, 3); player.speedBoosted = true; player.speedUntil = (tickCount || 0) + 300; break;
+      case 'shield': player.shielded = true; player.shieldUntil = (tickCount || 0) + 200; break;
+      case 'skull': player.speed = Math.max(player.speed - 1, 1); player.skullUntil = (tickCount || 0) + 200; break;
+      case 'kick': player.kicker = true; break;
     }
   }
 }

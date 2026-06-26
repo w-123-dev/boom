@@ -6,35 +6,52 @@
   <title>BoomArena - 个人主页</title>
   <link rel="stylesheet" href="/css/common.css">
   <style>
-    .profile-container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #0f3460; margin-bottom: 20px; }
-    .profile-card { background: #16213e; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; }
+    .profile-container { max-width: 600px; margin: 0 auto; padding: 24px; animation: fadeIn 0.3s ease; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; margin-bottom: 20px; background: rgba(13,13,26,0.6); border: 1px solid rgba(15,52,96,0.4); border-radius: 14px; backdrop-filter: blur(8px); }
+    .profile-card { background: var(--bg-card), rgba(22,33,62,0.95), rgba(26,26,62,0.95)); border-radius: 14px; padding: 30px; text-align: center; margin-bottom: 16px; border: 1px solid rgba(15,52,96,0.6); box-shadow: 0 4px 24px rgba(0,0,0,0.3); backdrop-filter: blur(8px); }
     .profile-card .avatar { font-size: 60px; margin-bottom: 10px; }
     .profile-card .name { font-size: 24px; font-weight: bold; }
     .profile-card .username { color: #888; font-size: 14px; }
     .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
-    .stat-card { background: #0f3460; border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-card { background: rgba(15,52,96,0.8); border-radius: 10px; padding: 16px; text-align: center; border: 1px solid rgba(79,195,247,0.1); }
     .stat-card .value { font-size: 24px; font-weight: bold; color: #4fc3f7; }
     .stat-card .label { font-size: 12px; color: #888; margin-top: 4px; }
-    .history { background: #16213e; border-radius: 12px; padding: 20px; }
+    .history { background: linear-gradient(135deg, rgba(22,33,62,0.95), rgba(26,26,62,0.95)); border-radius: 14px; padding: 20px; border: 1px solid rgba(15,52,96,0.6); box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
     .history h2 { font-size: 16px; margin-bottom: 12px; }
-    .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #0f3460; font-size: 14px; }
-    .history-item .win { color: #66bb6a; }
-    .history-item .lose { color: #ef5350; }
+    .history-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #0f3460; font-size: 13px; }
+    .history-item:last-child { border-bottom: none; }
+    .history-item .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+    .history-item .badge.win { background: rgba(102,187,106,0.2); color: #66bb6a; }
+    .history-item .badge.lose { background: rgba(239,83,80,0.2); color: #ef5350; }
+    .history-item .date { color: #888; font-size: 12px; }
     .back-link { display: inline-block; margin-top: 20px; }
   </style>
 </head>
 <body>
   <div class="profile-container">
-    <header>
-      <h1>💣 BoomArena</h1>
+    <header class="glass-header">
+      <h1> BoomArena</h1>
       <a href="/">← 返回大厅</a>
     </header>
 
-    <div class="profile-card">
-      <div class="avatar">👤</div>
-      <div class="name" id="nickname">-</div>
+    <div class="profile-card" style="animation:fadeIn 0.3s ease;">
+      <div id="avatarDisplay" style="border:2px solid #0f3460;border-radius:50%;width:70px;height:70px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;background:#0f3460;overflow:hidden;">
+        <span id="avatarEmoji" style="font-size:36px;">👤</span>
+        <img id="avatarImg" style="width:100%;height:100%;object-fit:cover;display:none;">
+      </div>
+      <div style="margin-bottom:8px;">
+        <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+        <button id="uploadAvatarBtn" style="padding:4px 12px;font-size:12px;cursor:pointer;background:#0f3460;border:1px solid #1a5276;border-radius:6px;color:#ccc;">上传头像</button>
+        <span id="uploadStatus" style="font-size:11px;color:#888;margin-left:6px;"></span>
+      </div>
+            <div class="name" id="nicknameDisplay">-</div>
       <div class="username" id="username">@-</div>
+      <div style="margin:12px 0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <input type="text" id="nicknameInput" placeholder="New nickname" style="max-width:160px;padding:6px 10px;font-size:13px;display:none;">
+        <button id="editNickBtn" style="padding:6px 16px;font-size:13px;">修改昵称</button>
+        <button id="saveNickBtn" class="success" style="padding:6px 16px;font-size:13px;display:none;">保存</button>
+        <button id="cancelNickBtn" class="danger" style="padding:6px 16px;font-size:13px;display:none;">取消</button>
+      </div>
       <div class="stats">
         <div class="stat-card">
           <div class="value" id="rating">-</div>
@@ -51,6 +68,28 @@
       </div>
     </div>
 
+    <div style="background:var(--bg-card);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px;border:1px solid var(--border);box-shadow:var(--shadow);">
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;text-align:center;">⭐ 局内角色</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <div class="charopt" data-ch="stick" style="padding:8px 18px;background:rgba(15,52,96,0.6);border-radius:10px;cursor:pointer;font-size:14px;border:2px solid transparent;transition:all 0.2s;color:#ccc;">🧑‍🎨 火柴人</div>
+        <div class="charopt" data-ch="circle" style="padding:8px 18px;background:rgba(15,52,96,0.6);border-radius:10px;cursor:pointer;font-size:14px;border:2px solid transparent;transition:all 0.2s;color:#ccc;">⚪ 球</div>
+        <div class="charopt" data-ch="square" style="padding:8px 18px;background:rgba(15,52,96,0.6);border-radius:10px;cursor:pointer;font-size:14px;border:2px solid transparent;transition:all 0.2s;color:#ccc;">■ 方块</div>
+        <div class="charopt" data-ch="triangle" style="padding:8px 18px;background:rgba(15,52,96,0.6);border-radius:10px;cursor:pointer;font-size:14px;border:2px solid transparent;transition:all 0.2s;color:#ccc;">▲ 三角</div>
+      </div>
+    </div>
+
+    <div class="section" style="background:linear-gradient(135deg,var(--bg-card));border-radius:var(--radius-lg);padding:20px;margin-bottom:16px;border:1px solid var(--border);box-shadow:var(--shadow);">
+      <h2 style="font-size:15px;margin-bottom:12px;color:#aaa;">🔑 修改密码</h2>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <input type="password" id="oldPwdInput" placeholder="旧密码" style="max-width:240px;padding:8px 12px;font-size:13px;">
+        <input type="password" id="newPwdInput" placeholder="新密码" style="max-width:240px;padding:8px 12px;font-size:13px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="changePwdBtn" style="padding:6px 16px;font-size:13px;">修改密码</button>
+          <span id="pwdStatus" style="font-size:12px;color:#888;"></span>
+        </div>
+      </div>
+    </div>
+
     <div class="history">
       <h2>对局历史</h2>
       <div id="historyList">
@@ -62,36 +101,143 @@
   <script src="/js/api.js"></script>
   <script>
     requireAuth();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    function setAvatarDisplay(avatar) {
+      var emoji = document.getElementById('avatarEmoji');
+      var img = document.getElementById('avatarImg');
+      if (avatar && avatar.indexOf('/uploads/') === 0) {
+        emoji.style.display = 'none';
+        img.style.display = 'block';
+        img.src = avatar + '?t=' + Date.now();
+      } else {
+        emoji.style.display = 'block';
+        img.style.display = 'none';
+        emoji.textContent = avatarIcons[avatar] || '🧑';
+      }
+    }
 
     async function loadProfile() {
       try {
-        const data = await API.get('/api/user/profile');
-        document.getElementById('nickname').textContent = data.nickname;
+        var data = await API.get('/api/user/profile');
+        document.getElementById('nicknameDisplay').textContent = data.nickname;
         document.getElementById('username').textContent = '@' + data.username;
         document.getElementById('rating').textContent = data.rating;
         document.getElementById('wins').textContent = data.wins;
         document.getElementById('winRate').textContent = data.win_rate + '%';
-
-        // Load match history
-        const matches = await API.get('/api/user/matches');
-        const list = document.getElementById('historyList');
-        if (matches.length === 0) {
-          list.innerHTML = '<div style="text-align:center;color:#666;padding:12px;">暂无对局记录</div>';
-        } else {
-          list.innerHTML = matches.map(m => `
-            <div class="history-item">
-              <span>${m.game_type === 'bomberman' ? '炸弹人' : '未知'} | ${m.opponent || 'AI'}</span>
-              <span class="${m.is_winner ? 'win' : 'lose'}">${m.is_winner ? '胜利' : '失败'}</span>
-            </div>
-          `).join('');
-        }
-      } catch (e) {
-        console.error(e);
-      }
+        setAvatarDisplay(data.avatar);
+      } catch(e) { console.error(e); }
     }
 
+    document.getElementById('uploadAvatarBtn').onclick = function() {
+      document.getElementById('avatarFileInput').click();
+    };
+
+    document.getElementById('avatarFileInput').onchange = async function() {
+      var file = this.files[0];
+      if (!file) return;
+      var status = document.getElementById('uploadStatus');
+      status.textContent = 'Uploading...';
+      try {
+        var formData = new FormData();
+        formData.append('avatar', file);
+        var res = await fetch('/api/user/update-avatar', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+          body: formData
+        });
+        var data = await res.json();
+        if (data.success) {
+          setAvatarDisplay(data.avatar);
+          status.textContent = 'Upload OK';
+        } else {
+          status.textContent = 'Failed: ' + (data.error || 'unknown');
+        }
+      } catch(e) {
+        status.textContent = 'Error: ' + e.message;
+      }
+    };
+
+    document.getElementById('editNickBtn').onclick = function() {
+      document.getElementById('nicknameInput').style.display = 'inline-block';
+      document.getElementById('editNickBtn').style.display = 'none';
+      document.getElementById('saveNickBtn').style.display = 'inline-block';
+      document.getElementById('cancelNickBtn').style.display = 'inline-block';
+      document.getElementById('nicknameInput').focus();
+    };
+    document.getElementById('cancelNickBtn').onclick = function() {
+      document.getElementById('nicknameInput').style.display = 'none';
+      document.getElementById('editNickBtn').style.display = 'inline-block';
+      document.getElementById('saveNickBtn').style.display = 'none';
+      document.getElementById('cancelNickBtn').style.display = 'none';
+    };
+    document.getElementById('saveNickBtn').onclick = async function() {
+      var nick = document.getElementById('nicknameInput').value.trim();
+      if (!nick || nick.length < 2 || nick.length > 16) { alert('Nickname must be 2-16 chars'); return; }
+      try {
+        var data = await API.post('/api/user/update-nickname', { nickname: nick });
+        if (data.success) {
+          document.getElementById('nicknameDisplay').textContent = nick;
+          var u = JSON.parse(localStorage.getItem('user') || '{}');
+          u.nickname = nick;
+          localStorage.setItem('user', JSON.stringify(u));
+          document.getElementById('cancelNickBtn').click();
+          alert('Nickname updated!');
+        }
+      } catch(e) { alert(e.message); }
+    };
+
     loadProfile();
+
+    // Character selection
+    document.querySelectorAll(".charopt").forEach(function(el) {
+      el.onclick = async function() {
+        var ch = this.dataset.ch;
+        try {
+          var res = await API.post("/api/user/update-character", { character: ch });
+          if (res.success) {
+            document.querySelectorAll(".charopt").forEach(function(e) {
+              e.style.borderColor = "transparent";
+              e.style.background = "rgba(15,52,96,0.6)";
+            });
+            this.style.borderColor = "#4fc3f7";
+            this.style.background = "rgba(79,195,247,0.15)";
+          }
+        } catch(e) { alert(e.message); }
+      };
+    });
+    async function loadCharacter() {
+      try {
+        var data = await API.get("/api/user/profile");
+        var gc = data.game_character || "stick";
+        document.querySelectorAll(".charopt").forEach(function(el) {
+          el.style.borderColor = (el.dataset.ch === gc) ? "#4fc3f7" : "transparent";
+          el.style.background = (el.dataset.ch === gc) ? "rgba(79,195,247,0.15)" : "rgba(15,52,96,0.6)";
+        });
+      } catch(e) { console.error(e); }
+    }
+    loadCharacter();
+
+    async function loadHistory() {
+      try {
+        var matches = await API.get('/api/user/matches');
+        var html = '';
+        if (!matches || matches.length === 0) {
+          html = '<div style="text-align:center;color:#666;padding:16px;">⚠️ 暂无对局记录</div>';
+        } else {
+          matches.forEach(function(m) {
+            var cls = m.is_winner ? 'win' : 'lose';
+            var label = m.is_winner ? '✅ 胜利' : '❌ 失败';
+            var score = m.rating_change || 0;
+            var scoreCls = score >= 0 ? 'win' : 'lose';
+            html += '<div class="history-item">';
+            html += '<span><span class="badge ' + cls + '">' + label + '</span>  ⚔️ ' + m.kills + '</span>';
+            html += '<span style="font-weight:bold;color:' + (score >= 0 ? '#66bb6a' : '#ef5350') + '">' + (score >= 0 ? '+' : '') + score + '</span>';
+            html += '</div>';
+          });
+        }
+        document.getElementById('historyList').innerHTML = html;
+      } catch(e) { console.error(e); }
+    }
+    loadHistory();
   </script>
 </body>
 </html>

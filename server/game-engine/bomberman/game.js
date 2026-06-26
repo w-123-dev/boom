@@ -8,13 +8,13 @@ var rollPowerup = require('./powerup').rollPowerup;
 
 var GRID_SIZE = 40;
 var INVINCIBLE_TICKS = 30;
-var MOVE_COOLDOWN = 3; // Move every 3 ticks (150ms)
+var MOVE_COOLDOWN = 2; // Move every 3 ticks (150ms)
 
-var SPEED_LEVELS = [4, 3, 2, 1, 1]; // moveCooldown at each speed level (lower = faster)
-var SPEED_INTERVAL = 1200; // ticks per minute (50ms * 1200 = 60s)
+var SPEED_LEVELS = [3, 2, 1, 1, 1]; // moveCooldown at each speed level (lower = faster)
+var SPEED_INTERVAL = 900; // ticks per minute (50ms * 1200 = 60s)
 var BOMB_INTERVAL = 2400;  // ticks per 2 minutes
 
-function BombermanGame(players, config) {
+function BombermanGame(players, config, mapSize) {
   this.config = config;
   this.gridSize = GRID_SIZE;
   this.state = 'playing';
@@ -23,14 +23,15 @@ function BombermanGame(players, config) {
   this.deathOrder = [];
   this.elapsedMinutes = 0; // Track elapsed game minutes for gradual speedup
 
-  var mapData = generateMap(config.DEFAULT_MAP_WIDTH || 13, config.DEFAULT_MAP_HEIGHT || 13);
+  var size = mapSize || config.DEFAULT_MAP_WIDTH || 21;
+  var mapData = generateMap(size, size);
   this.map = mapData.map;
   this.mapWidth = mapData.width;
   this.mapHeight = mapData.height;
 
   this.players = [];
   for (var i = 0; i < players.length; i++) {
-    var pp = new Player(players[i].userId, players[i].nickname, i);
+    var pp = new Player(players[i].userId, players[i].nickname, i, players[i]);
     pp.moveCooldown = 0;
     pp.moveCooldownBase = MOVE_COOLDOWN;
     pp.kills = 0;
@@ -72,6 +73,7 @@ BombermanGame.prototype.tick = function() {
   for (var id in this.invincible) {
     if (this.invincible[id] > 0) this.invincible[id]--;
   }
+  this.processExpiry();
   this.checkWinCondition();
   this.processTimeProgress();
   return this.getState();
@@ -95,6 +97,17 @@ BombermanGame.prototype.processMovements = function() {
     if (this.canMoveTo(nx, ny, player)) {
       player.x = nx;
       player.y = ny;
+      // Kick: push any bomb at the new position
+      if (player.kicker) {
+        for (var ki = 0; ki < this.bombs.length; ki++) {
+          var b = this.bombs[ki];
+          if (!b.exploded && b.x === nx && b.y === ny) {
+            b.x = nx + dx;
+            b.y = ny + dy;
+            break;
+          }
+        }
+      }
       player.moveCooldown = (player.speed >= 2) ? 1 : player.moveCooldownBase;
     }
   }
@@ -104,8 +117,19 @@ BombermanGame.prototype.canMoveTo = function(x, y, player) {
   if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) return false;
   if (this.map[y][x] === TILE.HARD) return false;
   if (this.map[y][x] === TILE.SOFT) return false;
+  // Check for bombs at target cell
   for (var i = 0; i < this.bombs.length; i++) {
-    if (!this.bombs[i].exploded && this.bombs[i].x === x && this.bombs[i].y === y) return false;
+    if (!this.bombs[i].exploded && this.bombs[i].x === x && this.bombs[i].y === y) {
+      if (!player.kicker) return false;
+      // Kicker: check if bomb can be pushed further
+      var dx = x - player.x, dy = y - player.y;
+      var kx = x + dx, ky = y + dy;
+      if (kx < 0 || kx >= this.mapWidth || ky < 0 || ky >= this.mapHeight) return false;
+      if (this.map[ky][kx] === TILE.HARD || this.map[ky][kx] === TILE.SOFT) return false;
+      for (var bi = 0; bi < this.bombs.length; bi++) {
+        if (!this.bombs[bi].exploded && this.bombs[bi].x === kx && this.bombs[bi].y === ky) return false;
+      }
+    }
   }
   for (var j = 0; j < this.players.length; j++) {
     if (this.players[j].id !== player.id && this.players[j].alive && this.players[j].x === x && this.players[j].y === y) return false;
@@ -198,6 +222,19 @@ BombermanGame.prototype.explodeBomb = function(bomb) {
   this.explosions.push({ cells: cells, startTime: Date.now(), duration: this.config.EXPLOSION_DURATION_MS || 500 });
 };
 
+BombermanGame.prototype.processExpiry = function() {
+  var now = this.tickCount;
+  for (var i = 0; i < this.players.length; i++) {
+    var p = this.players[i];
+    if (!p.alive) continue;
+    if (p.shielded && p.shieldUntil && now >= p.shieldUntil) { p.shielded = false; p.shieldUntil = 0; }
+    if (p.speedBoosted && p.speedUntil && now >= p.speedUntil) { p.speed = 1; p.speedBoosted = false; p.speedUntil = 0; p.moveCooldownBase = 3; }
+    if (p.skullUntil && now >= p.skullUntil) { p.speed = 1; p.skullUntil = 0; }
+    if (p.bombUpUntil && now >= p.bombUpUntil) { p.maxBombs = Math.max(p.maxBombs - 1, 1); p.bombUpUntil = 0; }
+    if (p.fireUpUntil && now >= p.fireUpUntil) { p.bombRange = Math.max(p.bombRange - 1, 2); p.fireUpUntil = 0; }
+  }
+};
+
 BombermanGame.prototype.processPickups = function() {
   for (var i = 0; i < this.players.length; i++) {
     var player = this.players[i];
@@ -205,7 +242,7 @@ BombermanGame.prototype.processPickups = function() {
     for (var j = 0; j < this.powerups.length; j++) {
       var pu = this.powerups[j];
       if (pu.x === player.x && pu.y === player.y) {
-        pu.apply(player);
+        pu.apply(player, this.tickCount);
         this.powerups.splice(j, 1);
         j--;
       }
@@ -255,7 +292,11 @@ BombermanGame.prototype.getState = function() {
       direction: p.direction, alive: p.alive, color: p.color,
       maxBombs: p.maxBombs, activeBombs: p.activeBombs,
       bombRange: p.bombRange, shielded: p.shielded, speed: p.speed,
-      kills: p.kills || 0
+      kills: p.kills || 0,
+      game_character: p.game_character || 'stick',
+      avatar: p.avatar || 'default',
+      kicker: p.kicker || false
+      disconnected: p.disconnected || false
     });
   }
   var bombs = [];
@@ -275,11 +316,13 @@ BombermanGame.prototype.getState = function() {
   for (var m = 0; m < this.powerups.length; m++) {
     powerups.push({ x: this.powerups[m].x, y: this.powerups[m].y, type: this.powerups[m].type });
   }
+  var elapsedMs = this.tickCount * 50;
   return {
     state: this.state, tick: this.tickCount,
     players: players, bombs: bombs,
     explosions: explosions, powerups: powerups,
-    map: this.map, winner: this.winner
+    map: this.map, winner: this.winner,
+    elapsed: elapsedMs
   };
 };
 
@@ -295,7 +338,7 @@ BombermanGame.prototype.processTimeProgress = function() {
       var speedLevel = Math.min(newMinutes, 4);
       p.moveCooldownBase = SPEED_LEVELS[speedLevel];
       // Bomb count: +1 every 2 minutes (max +5 from baseline)
-      if (newMinutes % 2 === 0 && newMinutes > 0) {
+      if (newMinutes > 0) {
         p.maxBombs = Math.min(p.maxBombs + 1, 6);
       }
     }

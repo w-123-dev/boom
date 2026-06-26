@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoomArena - 管理后台</title>
+  <link rel="stylesheet" href="/css/common.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; color: #eee; font-family: system-ui, sans-serif; }
+    .admin-container { max-width: 960px; margin: 0 auto; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #0f3460; margin-bottom: 20px; }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: rgba(22,33,62,0.9); border-radius: 10px; padding: 18px; text-align: center; border: 1px solid rgba(15,52,96,0.6); backdrop-filter: blur(8px); }
+    .stat-card .num { font-size: 28px; font-weight: bold; color: #4fc3f7; }
+    .stat-card .lbl { font-size: 12px; color: #888; margin-top: 4px; }
+    h2 { font-size: 15px; margin-bottom: 10px; color: #aaa; }
+    .section { background: rgba(22,33,62,0.9); border-radius: 10px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(15,52,96,0.6); backdrop-filter: blur(8px); box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 6px; border-bottom: 1px solid #0f3460; color: #888; font-weight: normal; font-size: 11px; }
+    td { padding: 8px 6px; border-bottom: 1px solid #0f3460; }
+    .scroll-table { max-height: 360px; overflow-y: auto; }
+    #loginBox { max-width: 320px; margin: 100px auto; background: linear-gradient(135deg,rgba(22,33,62,0.96),rgba(26,26,62,0.96)); padding: 30px; border-radius: 14px; text-align: center; border: 1px solid rgba(15,52,96,0.6); box-shadow: 0 8px 32px rgba(0,0,0,0.4); backdrop-filter: blur(12px); }
+    #loginBox h2 { font-size: 18px; margin-bottom: 16px; color: #eee; }
+    #loginBox input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; border-radius: 6px; font-size: 14px; }
+    #loginBox button { width: 100%; padding: 10px; background: #4fc3f7; color: #000; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    .announce-input { display: flex; gap: 8px; margin-bottom: 10px; }
+    .announce-input input { flex:1; padding: 8px 12px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; border-radius: 6px; font-size: 13px; }
+    .announce-input button { padding: 8px 20px; background: #4fc3f7; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .announce-item { padding: 6px 0; border-bottom: 1px solid #0f3460; font-size: 13px; color: #ccc; }
+    .announce-item .time { color: #666; font-size: 11px; margin-left: 8px; }
+    .error { color: #ef5350; font-size: 13px; margin-top: 8px; }
+    .error-container { max-width: 320px; margin: 100px auto; background: #16213e; padding: 30px; border-radius: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="loginBox">
+    <h2>🛠 管理员登录</h2>
+    <input type="text" id="adminUser" placeholder="账号" value="admin">
+    <input type="password" id="adminPass" placeholder="密码" value="admin123">
+    <button onclick="adminLogin()">登录</button>
+    <div id="loginError" class="error"></div>
+    <p style="margin-top:14px;font-size:12px;"><a href="/login.html" style="color:#666;">← 返回用户登录</a></p>
+  </div>
+
+  <div id="adminPanel" class="admin-container" style="display:none;">
+    <header class="glass-header">
+      <h1>🛠 BoomArena 管理后台</h1>
+      <a href="#" onclick="adminLogout()" style="color:#ef5350;font-size:13px;">退出登录</a>
+    </header>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card"><div class="num" id="statUsers">-</div><div class="lbl">用户总数</div></div>
+      <div class="stat-card"><div class="num" id="statMatches">-</div><div class="lbl">总对局</div></div>
+      <div class="stat-card"><div class="num" id="statRecent">-</div><div class="lbl">今日对局</div></div>
+      <div class="stat-card"><div class="num" id="statOnline">-</div><div class="lbl">在线</div></div>
+    </div>
+
+    <div class="section">
+      <h2>👥 用户管理</h2>
+      <div class="scroll-table">
+        <table><thead><tr><th>ID</th><th>用户名</th><th>昵称</th><th>积分</th><th>胜场</th><th>对局</th><th>注册时间</th></tr></thead><tbody id="userTable"></tbody></table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📢 系统公告</h2>
+      <div class="announce-input">
+        <input type="text" id="announceInput" placeholder="输入公告内容..." maxlength="200">
+        <button onclick="postAnnounce()">发布</button>
+      </div>
+      <div id="announceList"></div>
+    </div>
+  </div>
+
+  <script>
+    async function adminLogin() {
+      var u = document.getElementById('adminUser').value.trim();
+      var p = document.getElementById('adminPass').value;
+      try {
+        var res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        var data = await res.json();
+        if (data.success) {
+          localStorage.setItem('admin_token', data.token);
+          document.getElementById('loginBox').style.display = 'none';
+          document.getElementById('adminPanel').style.display = 'block';
+          loadStats();
+          loadUsers();
+          loadAnnouncements();
+        } else {
+          document.getElementById('loginError').textContent = data.error || 'Login failed';
+        }
+      } catch(e) { document.getElementById('loginError').textContent = 'Error: ' + e.message; }
+    }
+
+    function getHeaders() {
+      return { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token'), 'Content-Type': 'application/json' };
+    }
+
+    async function loadStats() {
+      try {
+        var res = await fetch('/api/admin/stats', { headers: getHeaders() });
+        var d = await res.json();
+        document.getElementById('statUsers').textContent = d.userCount;
+        document.getElementById('statMatches').textContent = d.matchCount;
+        document.getElementById('statRecent').textContent = d.recentMatches;
+        document.getElementById('statOnline').textContent = d.onlineCount;
+      } catch(e) {}
+    }
+
+    async function loadUsers() {
+      try {
+        var res = await fetch('/api/admin/users', { headers: getHeaders() });
+        var users = await res.json();
+        var html = '';
+        users.forEach(function(u) {
+          var date = u.created_at ? u.created_at.split(' ')[0] : '-';
+          html += '<tr><td>' + u.id + '</td><td>' + u.username + '</td><td>' + (u.nickname||'-') + '</td><td>' + u.rating + '</td><td>' + u.wins + '</td><td>' + u.total_games + '</td><td>' + date + '</td></tr>';
+        });
+        document.getElementById('userTable').innerHTML = html;
+      } catch(e) {}
+    }
+
+    async function loadAnnouncements() {
+      try {
+        var res = await fetch('/api/admin/announcements');
+        var list = await res.json();
+        var html = '';
+        if (!list || list.length === 0) html = '<div style="color:#666;font-size:13px;">暂无公告</div>';
+        else {
+          list.forEach(function(a) {
+            var time = a.created_at ? a.created_at.split('.')[0] : '';
+            html += '<div class="announce-item">' + a.content + '<span class="time">' + time + '</span></div>';
+          });
+        }
+        document.getElementById('announceList').innerHTML = html;
+      } catch(e) {}
+    }
+
+    async function postAnnounce() {
+      var input = document.getElementById('announceInput');
+      var content = input.value.trim();
+      if (!content) return;
+      try {
+        var res = await fetch('/api/admin/announcements', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ content: content })
+        });
+        var d = await res.json();
+        if (d.success) {
+          input.value = '';
+          loadAnnouncements();
+        } else alert(d.error);
+      } catch(e) { alert(e.message); }
+    }
+
+    function adminLogout() {
+      localStorage.removeItem("admin_token");
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("loginBox").style.display = "block";
+    }
+
+    // Auto-login if token exists
+    if (localStorage.getItem('admin_token')) {
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+      loadStats();
+      loadUsers();
+      loadAnnouncements();
+    }
+  </script>
+</body>
+</html>

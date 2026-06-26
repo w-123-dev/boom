@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3');
+﻿const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
@@ -52,6 +52,7 @@ db.exec(`
     friend_id INTEGER NOT NULL,
     status TEXT CHECK(status IN ('pending','accepted')) DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    remark TEXT DEFAULT '',
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (friend_id) REFERENCES users(id),
     UNIQUE(user_id, friend_id)
@@ -61,5 +62,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_match_players_match ON match_players(match_id);
   CREATE INDEX IF NOT EXISTS idx_match_players_user ON match_players(user_id);
 `);
+
+
+
+// Chat messages table
+db.exec("CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, user_id INTEGER NOT NULL, user_name TEXT NOT NULL, message TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)");
+db.exec("CREATE INDEX IF NOT EXISTS idx_chat_room ON chat_messages(room)");
+// Add remark column if missing (for existing databases)
+try { db.exec("ALTER TABLE friends ADD COLUMN remark TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN game_character TEXT DEFAULT 'stick'"); } catch(e) {}
+try { db.exec("ALTER TABLE match_players ADD COLUMN rating_change INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("CREATE TABLE IF NOT EXISTS friend_remarks (user_id INTEGER NOT NULL, friend_id INTEGER NOT NULL, remark TEXT DEFAULT '', PRIMARY KEY (user_id, friend_id), FOREIGN KEY (user_id) REFERENCES users(id), FOREIGN KEY (friend_id) REFERENCES users(id))"); } catch(e) {}
+try { db.exec("CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"); } catch(e) {}
+try { db.exec("ALTER TABLE match_players ADD COLUMN rating_change INTEGER DEFAULT 0"); } catch(e) {}
 
 module.exports = db;

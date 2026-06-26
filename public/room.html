@@ -7,25 +7,35 @@
   <link rel="stylesheet" href="/css/common.css">
   <style>
     .room-container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #0f3460; margin-bottom: 20px; }
-    .code-section { background: #16213e; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(15,52,96,0.5); margin-bottom: 24px; }
+    .code-section { background: linear-gradient(135deg,#16213e,#1a1a3e); border: 1px solid #0f3460; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     .code-label { color: #888; font-size: 13px; }
-    .code-value { font-size: 28px; letter-spacing: 6px; color: #4fc3f7; font-weight: bold; margin-top: 4px; }
-    .player-card { background: #0f3460; border-radius: 8px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .code-value { font-size: 32px; letter-spacing: 8px; color: #4fc3f7; font-weight: bold; margin-top: 6px; text-shadow: 0 0 20px rgba(79,195,247,0.3); }
+    .player-card { background: #0f3460; border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; transition: all 0.2s; border: 1px solid transparent; }
     .player-card .status { font-size: 13px; padding: 4px 12px; border-radius: 12px; }
     .player-card .status.ready { background: #66bb6a; color: #fff; }
     .player-card .status.not-ready { background: #555; color: #ccc; }
     .host-badge { background: #ffd54f; color: #1a1a2e; font-size: 11px; padding: 2px 8px; border-radius: 8px; font-weight: bold; margin-left: 8px; }
     .actions { display: flex; gap: 8px; justify-content: center; margin: 16px 0; }
     .actions button { flex: 1; max-width: 200px; }
-    .back-link { color: #ef5350; font-size: 14px; cursor: pointer; text-decoration: none; }
+    .back-link { color: #ef5350; font-size: 14px; cursor: pointer; text-decoration: none; transition: color 0.2s; }
     .hidden { display: none !important; }
     .result-title { text-align: center; margin-bottom: 12px; font-size: 18px; color: #4fc3f7; }
+    .map-size-bar { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0; padding: 10px; background: rgba(15,52,96,0.4); border-radius: 10px; font-size: 13px; }
+    .map-size-bar .size-opt { padding: 4px 14px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; color: #8899aa; }
+    .map-size-bar .size-opt:hover { border-color: rgba(79,195,247,0.3); color: #ccc; }
+    .map-size-bar .size-opt.active { background: rgba(79,195,247,0.15); border-color: #4fc3f7; color: #4fc3f7; font-weight: 600; }
+    .map-size-bar .size-opt.disabled { opacity: 0.5; cursor: not-allowed; }
+    .theme-bar { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 8px 0 12px; padding: 10px; background: rgba(15,52,96,0.4); border-radius: 10px; font-size: 13px; }
+    .theme-bar .theme-opt { padding: 4px 14px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; color: #8899aa; }
+    .theme-bar .theme-opt:hover { border-color: rgba(79,195,247,0.3); color: #ccc; }
+    .theme-bar .theme-opt.active { background: rgba(79,195,247,0.15); border-color: #4fc3f7; color: #4fc3f7; font-weight: 600; }
+    .theme-bar .theme-opt.disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <div class="room-container">
-    <header>
+  <div class="room-container" style="animation:fadeIn 0.3s ease;">
+    <header class="glass-header">
       <h1>BoomArena</h1>
       <a href="/" class="back-link" id="leaveLink">Leave Room</a>
     </header>
@@ -34,6 +44,19 @@
       <div class="code-value" id="roomCodeDisplay">----</div>
     </div>
     <h2 style="font-size:16px;margin-bottom:12px;">Players</h2>
+    <div class="map-size-bar" id="mapSizeBar">
+      <span style="color:#8899aa;">🗺️ 地图:</span>
+      <span class="size-opt" data-size="13">13×13</span>
+      <span class="size-opt" data-size="15">15×15</span>
+      <span class="size-opt active" data-size="17">17×17</span>
+      <span class="size-opt" data-size="21">21×21</span>
+    </div>
+    <div class="theme-bar" id="themeBar">
+      <span style="color:#8899aa;">🎨 主题:</span>
+      <span class="theme-opt active" data-theme="default">🏚️ 暗黑</span>
+      <span class="theme-opt" data-theme="ice">🧊 冰雪</span>
+      <span class="theme-opt" data-theme="volcano">🌋 火山</span>
+    </div>
     <div id="playerList"></div>
     <div class="actions">
       <button id="readyBtn" class="success hidden">Ready</button>
@@ -70,6 +93,19 @@
     socket.on('error_msg', function(m) { alert(m); });
 
     function renderRoom(data) {
+      // Update map size display
+      var mapSize = data.mapSize || 17;
+      var sizeOpts = document.querySelectorAll('.size-opt');
+      sizeOpts.forEach(function(el) {
+        el.classList.toggle('active', parseInt(el.dataset.size) === mapSize);
+        el.classList.toggle('disabled', data.hostId !== user.id);
+      });
+      // Update theme display
+      var theme = data.theme || 'default';
+      document.querySelectorAll('.theme-opt').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.theme === theme);
+        el.classList.toggle('disabled', data.hostId !== user.id);
+      });
       var list = document.getElementById('playerList');
       var html = '';
       for (var i = 0; i < data.players.length; i++) {
@@ -118,6 +154,26 @@
     socket.on('game_start', function(data) {
       window.location.href = '/game.html?code=' + code;
     });
+
+    // Map size selection
+      document.querySelectorAll('.size-opt').forEach(function(el) {
+        el.onclick = function() {
+          if (this.classList.contains('disabled')) return;
+          var size = parseInt(this.dataset.size);
+          if (isNaN(size)) return;
+          socket.emit('update_room_settings', { mapSize: size });
+        };
+      });
+
+    // Theme selection (event delegation)
+    document.getElementById('themeBar').onclick = function(e) {
+      var el = e.target;
+      if (!el.classList.contains('theme-opt')) return;
+      if (el.classList.contains('disabled')) return;
+      var theme = el.dataset.theme;
+      if (!theme) return;
+      socket.emit('update_room_settings', { theme: theme });
+    };
   </script>
 </body>
 </html>
