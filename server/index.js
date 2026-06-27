@@ -145,6 +145,12 @@ io.on('connection', function(socket) {
         room.players[i].socketId = socket.id;
         room.players[i].disconnected = false;
         if (disconnectTimers.has(user.id)) { clearTimeout(disconnectTimers.get(user.id)); disconnectTimers.delete(user.id); }
+        // Also clear game engine disconnected flag
+        if (room.game) {
+          for (var jgi = 0; jgi < room.game.players.length; jgi++) {
+            if (room.game.players[jgi].id === user.id) { room.game.players[jgi].disconnected = false; break; }
+          }
+        }
         break;
       }
     }
@@ -271,6 +277,15 @@ io.on('connection', function(socket) {
     io.to('lobby').emit('online_users', Array.from(onlineUsers.values()));
     var room = findRoomBySocket(socket.id);
     if (room && room.game && room.game.state === 'playing') {
+      // Skip if this socket is no longer the player's current socket
+      var stillCurrent = false;
+      for (var sc = 0; sc < room.players.length; sc++) {
+        if (room.players[sc].userId === user.id) {
+          if (room.players[sc].socketId === socket.id) { stillCurrent = true; }
+          break;
+        }
+      }
+      if (!stillCurrent) return;
       for (var di = 0; di < room.players.length; di++) {
         if (room.players[di].userId === user.id) { room.players[di].disconnected = true; break; }
       }
@@ -280,22 +295,7 @@ io.on('connection', function(socket) {
           if (room.game.players[gdi].id === user.id) { room.game.players[gdi].disconnected = true; break; }
         }
       }
-      var uid = user.id, rcode = room.code;
-      var timer = setTimeout(function() {
-        var r = rooms.get(rcode);
-        if (!r || !r.game || r.game.state !== 'playing') return;
-        for (var tdi = 0; tdi < r.players.length; tdi++) {
-          if (r.players[tdi].userId === uid && r.players[tdi].disconnected) {
-            for (var gi = 0; gi < r.game.players.length; gi++) {
-              if (r.game.players[gi].id === uid && r.game.players[gi].alive) {
-                r.game.players[gi].alive = false; r.game.deathOrder.push(uid); r.game.players[gi].suicide = true;
-              }
-            } break;
-          }
-        }
-        disconnectTimers.delete(uid);
-      }, 30000);
-      disconnectTimers.set(user.id, timer);
+      // Timeout disabled - player stays alive and can rejoin via join_game
     }
   });
 });

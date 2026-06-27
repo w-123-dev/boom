@@ -295,7 +295,7 @@ BombermanGame.prototype.getState = function() {
       kills: p.kills || 0,
       game_character: p.game_character || 'stick',
       avatar: p.avatar || 'default',
-      kicker: p.kicker || false
+      kicker: p.kicker || false,
       disconnected: p.disconnected || false
     });
   }
